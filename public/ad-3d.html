@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="sr">
+<head>
+  <meta charset="utf-8" />
+  <title>Balkan Vape — 3D Ad</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #050505;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    /* Vertical 9:16 stage for TikTok/Reels — 1080x1920 if you fullscreen on a 1920p monitor.
+       Or use 16:9 by setting --stage-w/h */
+    :root { --stage-w: 1080px; --stage-h: 1920px; }
+    #stage {
+      position: relative;
+      width: min(100vw, calc(100vh * 9 / 16));
+      height: 100vh;
+      margin: 0 auto;
+      background: radial-gradient(ellipse at 50% 30%, #181828 0%, #050505 70%);
+      overflow: hidden;
+    }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+    /* Overlay UI */
+    .overlay { position: absolute; inset: 0; pointer-events: none; }
+
+    .top-bar {
+      position: absolute; top: 32px; left: 0; right: 0;
+      display: flex; justify-content: center; align-items: center; gap: 12px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.32em; text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+    }
+    .top-bar .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #00ff9d; box-shadow: 0 0 12px #00ff9d;
+      animation: pulse 1.4s infinite;
+    }
+    @keyframes pulse { 50% { opacity: 0.4; } }
+
+    .age-tag {
+      position: absolute; top: 32px; right: 28px;
+      font-size: 13px; font-weight: 900;
+      color: #ff3b3b; border: 2px solid #ff3b3b; padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    /* Phase text — big centered text that swaps every 5s */
+    .phases {
+      position: absolute; bottom: 28%; left: 0; right: 0;
+      text-align: center;
+    }
+    .phase {
+      position: absolute; left: 0; right: 0;
+      font-weight: 900; letter-spacing: -0.02em; line-height: 0.95;
+      opacity: 0; transform: translateY(40px);
+      transition: opacity 0.6s cubic-bezier(.2,.8,.2,1), transform 0.6s cubic-bezier(.2,.8,.2,1);
+    }
+    .phase.active { opacity: 1; transform: translateY(0); }
+    .phase .big { font-size: clamp(60px, 11vw, 140px); color: #fff; }
+    .phase .sub { font-size: clamp(16px, 2.2vw, 22px); color: rgba(255,255,255,0.65); margin-top: 12px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; }
+    .phase .accent { color: #00ff9d; text-shadow: 0 0 30px rgba(0,255,157,0.4); }
+
+    .bottom-bar {
+      position: absolute; bottom: 36px; left: 0; right: 0;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .url {
+      font-size: 18px; font-weight: 900; letter-spacing: 0.12em; color: #fff;
+      padding: 10px 22px;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
+    }
+    .badges {
+      display: flex; gap: 14px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.18em; color: rgba(255,255,255,0.6);
+      text-transform: uppercase;
+    }
+    .badges span::before { content: '·'; margin-right: 14px; opacity: 0.4; }
+    .badges span:first-child::before { content: ''; margin: 0; }
+
+    /* Progress bar */
+    .progress {
+      position: absolute; top: 0; left: 0; height: 3px; width: 0%;
+      background: linear-gradient(90deg, #00ff9d, #00d8ff);
+      box-shadow: 0 0 16px rgba(0,255,157,0.6);
+    }
+
+    /* Branding upper-left */
+    .brand {
+      position: absolute; top: 70px; left: 28px;
+      font-size: 14px; font-weight: 900; letter-spacing: 0.32em; color: #fff;
+    }
+    .brand small { display: block; font-size: 9px; font-weight: 600; letter-spacing: 0.5em; color: rgba(255,255,255,0.4); margin-top: 4px; }
+
+    /* Vignette */
+    .vignette {
+      position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+    }
+
+    /* Recording hint */
+    .hint {
+      position: fixed; top: 8px; left: 8px; z-index: 9999;
+      background: rgba(0,0,0,0.7); color: #fff;
+      padding: 8px 12px; font-size: 11px; border-radius: 6px;
+      font-family: monospace;
+    }
+    .hint.hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="hint" id="hint">
+    🎬 Press <b>R</b> to start • <b>F</b> fullscreen • <b>H</b> hide this hint<br>
+    Record with <b>Win+Alt+R</b> (Windows Game Bar) or OBS · 25s loop
+  </div>
+
+  <div id="stage">
+    <canvas id="three"></canvas>
+
+    <div class="overlay">
+      <div class="progress" id="progress"></div>
+
+      <div class="top-bar">
+        <span class="dot"></span>
+        Premium Vape · Srbija · Live
+      </div>
+
+      <div class="age-tag">18+</div>
+
+      <div class="brand">
+        BALKAN<br>VAPE
+        <small>EST. 2025</small>
+      </div>
+
+      <div class="phases" id="phases">
+        <div class="phase" data-phase="0">
+          <div class="big">16.000<br><span class="accent">PUFFOVA</span></div>
+          <div class="sub">Najjači puff u Srbiji</div>
+        </div>
+        <div class="phase" data-phase="1">
+          <div class="big">50<span class="accent">+</span><br>UKUSA</div>
+          <div class="sub">Voćni · Mentol · Cola · Bobičasti</div>
+        </div>
+        <div class="phase" data-phase="2">
+          <div class="big">DOSTAVA<br><span class="accent">24h</span></div>
+          <div class="sub">Širom Srbije · Diskretno</div>
+        </div>
+        <div class="phase" data-phase="3">
+          <div class="big">PLAĆAJ<br><span class="accent">POUZEĆEM</span></div>
+          <div class="sub">Bez kartice · Bez rizika</div>
+        </div>
+        <div class="phase" data-phase="4">
+          <div class="big">NARUČI<br><span class="accent">SADA</span></div>
+          <div class="sub">Limited stock · Sada na akciji</div>
+        </div>
+      </div>
+
+      <div class="bottom-bar">
+        <div class="url">balkanvape.rs</div>
+        <div class="badges">
+          <span>JNR</span>
+          <span>Adalya</span>
+          <span>RandM</span>
+        </div>
+      </div>
+
+      <div class="vignette"></div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const PRODUCTS = [
+      '/products/jnr-falcon-16k.jpeg',
+      '/products/jnr-falcon-x-18k.jpeg',
+      '/products/adalya-16k.jpeg',
+      '/products/randm-digital-box-12k.jpeg',
+      '/products/randm-tornado-10k.jpeg',
+      '/products/adalya-10k.jpeg',
+    ];
+
+    const DURATION = 25; // seconds total loop
+    const PHASE_DUR = DURATION / 5; // 5 seconds per phase
+
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('three');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x050505, 8, 25);
+
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    camera.position.set(0, 0, 12);
+
+    function resize() {
+      const r = stage.getBoundingClientRect();
+      renderer.setSize(r.width, r.height, false);
+      camera.aspect = r.width / r.height;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Lights
+    const key = new THREE.DirectionalLight(0xffffff, 2.2);
+    key.position.set(4, 6, 5);
+    scene.add(key);
+
+    const rim = new THREE.DirectionalLight(0x00ff9d, 1.5);
+    rim.position.set(-5, 2, -3);
+    scene.add(rim);
+
+    const fill = new THREE.DirectionalLight(0x00d8ff, 0.6);
+    fill.position.set(3, -3, 2);
+    scene.add(fill);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+
+    // Floor reflection plane
+    const floorGeo = new THREE.PlaneGeometry(40, 40);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x0a0a0a,
+      roughness: 0.4,
+      metalness: 0.85,
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -3;
+    scene.add(floor);
+
+    // Backdrop
+    const backGeo = new THREE.PlaneGeometry(40, 40);
+    const backMat = new THREE.MeshBasicMaterial({
+      color: 0x0a0a14,
+      transparent: true,
+      opacity: 0.6,
+    });
+    const back = new THREE.Mesh(backGeo, backMat);
+    back.position.z = -8;
+    scene.add(back);
+
+    // Particles (floating dust)
+    const particleGeo = new THREE.BufferGeometry();
+    const particleCount = 200;
+    const positions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount * 3; i++) {
+      positions[i] = (Math.random() - 0.5) * 20;
+    }
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x00ff9d,
+      size: 0.03,
+      transparent: true,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+    });
+    const particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
+
+    // Product cards in 3D — billboards arranged on a circle
+    const loader = new THREE.TextureLoader();
+    const cards = [];
+    const cardGroup = new THREE.Group();
+    scene.add(cardGroup);
+
+    PRODUCTS.forEach((src, i) => {
+      const tex = loader.load(src);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const geo = new THREE.PlaneGeometry(2.4, 3.2);
+      const mat = new THREE.MeshStandardMaterial({
+        map: tex,
+        transparent: true,
+        roughness: 0.4,
+        metalness: 0.05,
+        emissive: 0xffffff,
+        emissiveMap: tex,
+        emissiveIntensity: 0.15,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      const angle = (i / PRODUCTS.length) * Math.PI * 2;
+      const radius = 4.2;
+      mesh.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+      mesh.lookAt(0, 0, 0);
+      mesh.userData.baseAngle = angle;
+      cardGroup.add(mesh);
+      cards.push(mesh);
+    });
+
+    // Center hero card (front-facing, biggest)
+    const heroTex = loader.load(PRODUCTS[0]);
+    heroTex.colorSpace = THREE.SRGBColorSpace;
+    const heroGeo = new THREE.PlaneGeometry(3, 4);
+    const heroMat = new THREE.MeshStandardMaterial({
+      map: heroTex,
+      transparent: true,
+      roughness: 0.3,
+      metalness: 0.1,
+      emissive: 0xffffff,
+      emissiveMap: heroTex,
+      emissiveIntensity: 0.25,
+    });
+    const hero = new THREE.Mesh(heroGeo, heroMat);
+    hero.position.set(0, 0, 0);
+    scene.add(hero);
+
+    // Halo behind hero
+    const haloGeo = new THREE.RingGeometry(2.2, 2.4, 64);
+    const haloMat = new THREE.MeshBasicMaterial({
+      color: 0x00ff9d,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+    });
+    const halo = new THREE.Mesh(haloGeo, haloMat);
+    halo.position.z = -0.5;
+    scene.add(halo);
+
+    // Phase rotation (UI text swap)
+    const phaseEls = document.querySelectorAll('.phase');
+    const progressEl = document.getElementById('progress');
+    let activePhase = -1;
+    function setPhase(i) {
+      if (i === activePhase) return;
+      activePhase = i;
+      phaseEls.forEach(el => el.classList.toggle('active', +el.dataset.phase === i));
+      // Swap hero texture every phase
+      const newTex = loader.load(PRODUCTS[i % PRODUCTS.length]);
+      newTex.colorSpace = THREE.SRGBColorSpace;
+      heroMat.map = newTex;
+      heroMat.emissiveMap = newTex;
+      heroMat.needsUpdate = true;
+    }
+
+    // Intro animation
+    let started = false;
+    let startTime = 0;
+    function start() {
+      if (started) return;
+      started = true;
+      startTime = performance.now();
+      document.getElementById('hint').classList.add('hidden');
+    }
+
+    // Animation loop
+    let lastT = performance.now();
+    function animate(t) {
+      const dt = (t - lastT) / 1000;
+      lastT = t;
+
+      const elapsed = started ? (t - startTime) / 1000 : 0;
+      const loop = elapsed % DURATION;
+      const phaseIdx = Math.floor(loop / PHASE_DUR);
+      setPhase(phaseIdx);
+      progressEl.style.width = `${(loop / DURATION) * 100}%`;
+
+      // Camera dolly
+      const camAngle = elapsed * 0.15;
+      camera.position.x = Math.sin(camAngle) * 1.5;
+      camera.position.y = Math.sin(elapsed * 0.4) * 0.4;
+      camera.lookAt(0, 0, 0);
+
+      // Rotate carousel
+      cardGroup.rotation.y += dt * 0.35;
+
+      // Cards bob & glow
+      cards.forEach((c, i) => {
+        c.position.y = Math.sin(elapsed * 1.2 + i) * 0.12;
+        c.rotation.z = Math.sin(elapsed * 0.6 + i) * 0.04;
+      });
+
+      // Hero subtle float + tilt to camera
+      hero.position.y = Math.sin(elapsed * 1.5) * 0.06;
+      hero.rotation.y = Math.sin(elapsed * 0.5) * 0.08;
+
+      // Halo pulse
+      const pulse = 1 + Math.sin(elapsed * 2.5) * 0.06;
+      halo.scale.set(pulse, pulse, 1);
+      haloMat.opacity = 0.25 + Math.sin(elapsed * 2.5) * 0.1;
+
+      // Particles drift
+      particles.rotation.y += dt * 0.05;
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    // Keyboard hooks
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'r' || e.key === 'R') start();
+      if (e.key === 'h' || e.key === 'H') document.getElementById('hint').classList.toggle('hidden');
+      if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      }
+    });
+
+    // Auto-start after 1.5s
+    setTimeout(start, 1500);
+  </script>
+</body>
+</html>
