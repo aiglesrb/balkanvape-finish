@@ -1,1 +1,5 @@
 project_id = "pztdyshncyaeoiazqmbs"
+
+# Allow anonymous (not-logged-in) customers to call the checkout function.
+[functions.create-checkout]
+verify_jwt = false

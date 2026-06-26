@@ -1,10 +1,12 @@
 import { MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { WHATSAPP_NUMBER, WHATSAPP_GREETING } from '@/lib/store';
 
 export default function WhatsAppButton() {
+  const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_GREETING)}`;
   return (
     <motion.a
-      href="https://wa.me/381600000000?text=Zdravo!%20Zanima%20me%20ponuda%20puffova."
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       initial={{ scale: 0, opacity: 0 }}

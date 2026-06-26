@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { WHATSAPP_NUMBER, FREE_SHIPPING_THRESHOLD, SHIPPING_COST, BULK_DISCOUNT_PERCENT } from '@/lib/store';
 
 const CITIES = ['Beograd', 'Novi Sad', 'Niš', 'Kragujevac', 'Subotica', 'Zrenjanin', 'Pančevo', 'Čačak', 'Novi Pazar', 'Kraljevo', 'Smederevo', 'Leskovac', 'Other'];
 
@@ -48,11 +49,11 @@ export default function CheckoutPage() {
   });
 
   const items = Object.values(cart);
-  const shipping = totalPrice >= 30 ? 0 : 3;
+  const shipping = totalPrice >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
   const hasDiscount = totalQty >= 2;
-  const discount = hasDiscount ? Math.round(totalPrice * 0.1) : 0;
+  const discount = hasDiscount ? Math.round(totalPrice * (BULK_DISCOUNT_PERCENT / 100)) : 0;
   const total = totalPrice - discount + shipping;
-  const missingForFreeShip = totalPrice < 30 ? 30 - totalPrice : 0;
+  const missingForFreeShip = totalPrice < FREE_SHIPPING_THRESHOLD ? FREE_SHIPPING_THRESHOLD - totalPrice : 0;
 
   const cartIds = new Set(Object.keys(cart));
   const upsellProducts = PRODUCTS.filter(p => !cartIds.has(p.id)).slice(0, 3);
@@ -77,8 +78,7 @@ export default function CheckoutPage() {
 
       // Encode message for URL
       const encodedMessage = encodeURIComponent(message);
-      const whatsappNumber = "381600000000"; // Replace with real number
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
 
       toast.success('Porudžbina je spremna! Preusmeravanje na WhatsApp... 🚚');
       
