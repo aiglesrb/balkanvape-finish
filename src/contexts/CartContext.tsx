@@ -7,7 +7,7 @@ export interface CartItem extends Product {
 
 interface CartContextType {
   cart: Record<string, CartItem>;
-  addToCart: (product: Product) => void;
+  addToCart: (product: Product, qty?: number) => void;
   changeQty: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
   clearCart: () => void;
@@ -32,10 +32,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem('vb_cart_v3', JSON.stringify(cart)); } catch {}
   }, [cart]);
 
-  const addToCart = useCallback((product: Product) => {
+  const addToCart = useCallback((product: Product, qty: number = 1) => {
+    const add = Math.max(1, Math.floor(qty));
     setCart(prev => {
       const existing = prev[product.id];
-      return { ...prev, [product.id]: { ...product, qty: existing ? existing.qty + 1 : 1 } };
+      return { ...prev, [product.id]: { ...product, qty: existing ? existing.qty + add : add } };
     });
     setLastAdded(product);
   }, []);

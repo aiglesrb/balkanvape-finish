@@ -4,15 +4,35 @@ import { Plus, Check } from 'lucide-react';
 import { Flavor, FLAVOR_BADGE_MAP } from '@/lib/flavors';
 import { useCart } from '@/contexts/CartContext';
 import type { Product } from '@/lib/products';
+import ProductModal from './ProductModal';
 
 interface Props {
   flavor: Flavor;
   index?: number;
 }
 
+// Adapt a Flavor to the Product shape used by the cart and modal.
+function flavorToProduct(flavor: Flavor): Product {
+  return {
+    id: flavor.id,
+    name: flavor.name,
+    image: flavor.image,
+    price: flavor.price,
+    puffs: '',
+    badge: (flavor.badge ?? '') as Product['badge'],
+    cats: ['flavor'],
+    stock: flavor.stock,
+    rating: 5,
+    reviews: 0,
+    brand: 'Balkan Vape',
+    flavors: [flavor.category],
+  };
+}
+
 export default function FlavorCard({ flavor, index = 0 }: Props) {
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
+  const [open, setOpen] = useState(false);
   const badge = flavor.badge ? FLAVOR_BADGE_MAP[flavor.badge] : null;
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -30,28 +50,15 @@ export default function FlavorCard({ flavor, index = 0 }: Props) {
 
   const handleMouseLeave = () => { x.set(0); y.set(0); };
 
-  const handleAdd = () => {
-    // Adapt flavor to Product shape for cart compatibility
-    const asProduct: Product = {
-      id: flavor.id,
-      name: flavor.name,
-      image: flavor.image,
-      price: flavor.price,
-      puffs: '',
-      badge: (flavor.badge ?? '') as Product['badge'],
-      cats: ['flavor'],
-      stock: flavor.stock,
-      rating: 5,
-      reviews: 0,
-      brand: 'Balkan Vape',
-      flavors: [flavor.category],
-    };
-    addToCart(asProduct);
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart(flavorToProduct(flavor));
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
   };
 
   return (
+    <>
     <motion.article
       ref={cardRef}
       initial={{ opacity: 0, y: 18 }}
@@ -61,7 +68,11 @@ export default function FlavorCard({ flavor, index = 0 }: Props) {
       style={{ rotateX, rotateY, transformPerspective: 800 }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="group bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow duration-300"
+      onClick={() => setOpen(true)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') setOpen(true); }}
+      className="group bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
     >
       <div className="relative h-52 bg-secondary flex items-center justify-center overflow-hidden p-5">
         {badge && (
@@ -103,5 +114,8 @@ export default function FlavorCard({ flavor, index = 0 }: Props) {
         </div>
       </div>
     </motion.article>
+
+    <ProductModal product={open ? flavorToProduct(flavor) : null} onClose={() => setOpen(false)} />
+    </>
   );
 }

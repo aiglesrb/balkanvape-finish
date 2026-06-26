@@ -3,6 +3,7 @@ import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import { Product, BADGE_MAP } from '@/lib/products';
 import { useCart } from '@/contexts/CartContext';
 import { Star, Plus, Check, Battery, Droplets, Usb, Wind } from 'lucide-react';
+import ProductModal from './ProductModal';
 
 interface Props {
   product: Product;
@@ -12,6 +13,7 @@ interface Props {
 export default function ProductCard({ product, index = 0 }: Props) {
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
+  const [open, setOpen] = useState(false);
   const badge = product.badge ? BADGE_MAP[product.badge] : null;
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -33,13 +35,15 @@ export default function ProductCard({ product, index = 0 }: Props) {
     y.set(0);
   };
 
-  const handleAdd = () => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
     addToCart(product);
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
   };
 
   return (
+    <>
     <motion.article
       ref={cardRef}
       initial={{ opacity: 0, y: 20 }}
@@ -49,7 +53,11 @@ export default function ProductCard({ product, index = 0 }: Props) {
       style={{ rotateX, rotateY, transformPerspective: 800 }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="group bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow duration-300"
+      onClick={() => setOpen(true)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') setOpen(true); }}
+      className="group bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
     >
       {/* Image area */}
       <div className="relative h-64 bg-secondary flex items-center justify-center overflow-hidden p-6">
@@ -142,5 +150,8 @@ export default function ProductCard({ product, index = 0 }: Props) {
         </div>
       </div>
     </motion.article>
+
+    <ProductModal product={open ? product : null} onClose={() => setOpen(false)} />
+    </>
   );
 }
